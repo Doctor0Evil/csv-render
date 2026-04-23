@@ -1,0 +1,18 @@
+table: governance_particle
+columns:
+  - name: host_did
+    type: String
+    required: true
+    description: "Decentralized identifier of the host whose sovereignty is being governed."
+  - name: consent_ledger_refs
+    type: Vec<String>
+    required: true
+    separator: ";"  # internal list delimiter
+  # ... all other fields ...
+  - name: neurorights_flags
+    type: NeurorightsFlags
+    required: true
+    flags:
+      - cognitive_liberty
+      - mental_privacy
+      - ...  # defined in neurorights-flags.toml
