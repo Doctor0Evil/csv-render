@@ -1,0 +1,14 @@
+# .github/workflows/csv-lint.yml
+name: CSV Lint
+on: [push, pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: CSV Lint
+        uses: kcheriyath/csvlinter@main
+        with:
+          find_path: "./" # Replace with the path to your CSV files
+          find_pattern: "*.csv"
+          fail_on_error: "true"
