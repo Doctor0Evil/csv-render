@@ -1,0 +1,49 @@
+csv-render/
+├── .github/
+│   └── workflows/
+│       ├── csv-lint.yml              # Python-based CSV validation CI (existing)
+│       └── rust-ci.yml               # Rust: test, fmt, clippy, and CSV lints
+│
+├── python/                           # Python validation & conversion tools
+│   ├── src/
+│   │   └── csv_validator.py
+│   ├── converters/
+│   │   └── csv_to_markdown.py
+│   └── requirements.txt
+│
+├── rust/                             # Rust workspace for type-safe CSV handling
+│   ├── Cargo.toml                    # Workspace manifest with members
+│   ├── rustfmt.toml                  # Formatting rules for Rust
+│   ├── clippy.toml                   # Linting configuration
+│   ├── csv-core/                     # Core library: RFC 4180 validation engine
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs                # Public API, doc comments
+│   │       ├── error.rs              # Error types
+│   │       ├── validator.rs          # Column-count, quoting, escaping checks
+│   │       └── schema.rs             # Schema definition from config files
+│   ├── csv-cli/                      # CLI binary: validate, lint, convert
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── main.rs               # Command-line interface (clap)
+│   ├── tests/                        # Integration tests with example CSVs
+│   │   ├── valid.csv
+│   │   └── broken.csv
+│   └── examples/                     # Example usage for AI training
+│       └── governance_particle.csv   # Your original dataset, RFC-compliant
+│
+├── configs/                          # Declarative, AI-readable schema definitions
+│   ├── governance-particle-schema.yaml  # Field names, types, constraints
+│   └── neurorights-flags.toml        # Enum definition for neurorights flags
+│
+├── docs/                             # Education & prompt engineering
+│   ├── prompt_engineering.md
+│   ├── rfc4180_guide.md
+│   └── github_rendering_tips.md
+│
+├── examples/                         # Before/after CSV files (general)
+│   ├── valid_example.csv
+│   └── broken_example.csv
+│
+├── README.md
+└── .gitignore
