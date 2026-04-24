@@ -1,0 +1,35 @@
+# configs/risk-profiles.toml
+
+[profiles.linear_clamp_0_100]
+raw_type = "RiskF64"
+description = "Linear clamp 0..100 to [0,1]"
+[profiles.linear_clamp_0_100.domain]
+kind = "bounded"
+min_raw = 0.0
+max_raw = 100.0
+
+[profiles.linear_clamp_0_100.normalization]
+kind = "linear"
+min_raw = 0.0
+max_raw = 100.0
+
+[profiles.linear_clamp_0_100.modifiers]
+normalized01 = true
+monotone_increasing = true
+
+[profiles.logit_clamp_p01_4]
+raw_type = "RiskF64"
+description = "Logit clamp of p in (0,1) with logits in [-4,4]"
+[profiles.logit_clamp_p01_4.domain]
+kind = "open_interval"
+min_raw = 0.0
+max_raw = 1.0
+
+[profiles.logit_clamp_p01_4.normalization]
+kind = "logit_clamp"
+lower_logit = -4.0
+upper_logit = 4.0
+
+[profiles.logit_clamp_p01_4.modifiers]
+normalized01 = true
+monotone_increasing = true
