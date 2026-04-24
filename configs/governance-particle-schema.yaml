@@ -1,4 +1,7 @@
 table: governance_particle
+schema_id: "governance-particle-v1"
+description: "Schema for governance_particle.csv with Tier 2 contracts."
+
 columns:
   - name: host_did
     type: String
@@ -14,20 +17,32 @@ columns:
   - name: timestamp
     type: u64
     required: true
-    description: "Unix timestamp (seconds since epoch)."
+    description: "Event timestamp in seconds since Unix epoch."
+    time:
+      unit: "seconds"
+      min_epoch: 1600000000
+      max_epoch: 4102444800
+      monotonicity: "non_decreasing"
 
   - name: neurorights_flags
     type: NeurorightsFlags
     required: true
-    flags:
-      - cognitive_liberty
-      - mental_privacy
-      - mental_integrity
-      - psychological_continuity
-      - agency_preservation
     description: "Bitflag-style representation of neurorights guarantees, constrained to flags defined in neurorights-flags.toml."
+    flags:
+      toml: "configs/neurorights-flags.toml"
+      contract: "baseline"
+      separator: ";"
 
   - name: notes
     type: String
     required: false
     description: "Optional free-form notes; may contain commas and must be quoted as needed."
+
+relations:
+  - name: "particle_to_host"
+    from:
+      file: "examples/governance_particle.csv"
+      column: "host_did"
+    to:
+      file: "examples/hosts.csv"
+      column: "did"
