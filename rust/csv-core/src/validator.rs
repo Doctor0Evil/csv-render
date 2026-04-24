@@ -1,34 +1,26 @@
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use csv::ReaderBuilder;
 
 use crate::error::ValidationError;
-use crate::schema::Schema;
+use crate::schema::{NeurorightsConfig, Schema};
 
-/// Options controlling how validation should behave.
-///
-/// This struct is designed to be extended with flags (e.g., max_rows, strict
-/// newline policies) without breaking callers.
 #[derive(Debug, Clone)]
 pub struct ValidationOptions {
-    /// If set, limit validation to at most this many data rows.
     pub max_rows: Option<usize>,
+    pub neurorights_flags_path: Option<PathBuf>,
 }
 
 impl Default for ValidationOptions {
     fn default() -> Self {
-        Self { max_rows: None }
+        Self {
+            max_rows: None,
+            neurorights_flags_path: None,
+        }
     }
 }
 
-/// Validate a CSV file against RFC 4180-like structural rules and a schema.
-///
-/// This function assumes:
-/// - UTF-8 encoding.
-/// - Comma delimiter.
-/// - Double-quote as the quote character.
-/// - First row is the header.
 pub fn validate_csv_with_schema<P: AsRef<Path>>(
     csv_path: P,
     schema: &Schema,
@@ -41,7 +33,13 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
         .flexible(false)
         .from_reader(file);
 
-    // Check header against schema.
+    let neurorights_allowed = if let Some(ref path) = options.neurorights_flags_path {
+        let cfg = NeurorightsConfig::from_toml_file(path)?;
+        Some(cfg.allowed_flags())
+    } else {
+        None
+    };
+
     let headers = reader.headers().map_err(|err| ValidationError::Structural {
         row: 0,
         column: 0,
@@ -74,7 +72,6 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
         }
     }
 
-    // Validate each record.
     for (row_idx, result) in reader.records().enumerate() {
         if let Some(limit) = options.max_rows {
             if row_idx >= limit {
@@ -82,7 +79,7 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
             }
         }
 
-        let row_number = row_idx + 1; // +1 to account for header row
+        let row_number = row_idx + 1;
         let record = result.map_err(|err| ValidationError::Structural {
             row: row_number,
             column: 0,
@@ -101,8 +98,75 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
             });
         }
 
-        // Placeholder for future semantic checks based on `schema.columns[idx].ty`.
-        // For now, we only enforce structural alignment with the schema.
+        for (idx, col) in schema.columns.iter().enumerate() {
+            let value = record.get(idx).unwrap_or_default();
+            let value_trimmed = value.trim();
+
+            if value_trimmed.is_empty() {
+                if col.required {
+                    return Err(ValidationError::Semantic {
+                        row: row_number,
+                        column: idx,
+                        message: format!(
+                            "required field '{}' is empty at row {}",
+                            col.name, row_number
+                        ),
+                    });
+                }
+                continue;
+            }
+
+            match col.ty.as_str() {
+                "String" => {}
+                "u64" => {
+                    if value_trimmed.parse::<u64>().is_err() {
+                        return Err(ValidationError::Semantic {
+                            row: row_number,
+                            column: idx,
+                            message: format!(
+                                "value {:?} in column '{}' could not be parsed as u64",
+                                value_trimmed, col.name
+                            ),
+                        });
+                    }
+                }
+                "Vec<String>" => {
+                    if let Some(sep) = &col.separator {
+                        let _items: Vec<&str> = value_trimmed.split(sep).collect();
+                    }
+                }
+                "NeurorightsFlags" => {
+                    if let Some(ref allowed) = neurorights_allowed {
+                        for token in value_trimmed.split(';') {
+                            let t = token.trim();
+                            if t.is_empty() {
+                                continue;
+                            }
+                            if !allowed.contains(t) {
+                                return Err(ValidationError::Semantic {
+                                    row: row_number,
+                                    column: idx,
+                                    message: format!(
+                                        "neurorights flag {:?} is not allowed at row {}",
+                                        t, row_number
+                                    ),
+                                });
+                            }
+                        }
+                    }
+                }
+                other => {
+                    return Err(ValidationError::Semantic {
+                        row: row_number,
+                        column: idx,
+                        message: format!(
+                            "unsupported column type {:?} for column '{}' in schema",
+                            other, col.name
+                        ),
+                    });
+                }
+            }
+        }
     }
 
     Ok(())
