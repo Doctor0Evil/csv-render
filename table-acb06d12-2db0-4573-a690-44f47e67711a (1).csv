@@ -1,5 +1,0 @@
-﻿Semantic Contract Type,Formal Specification / Mathematical Representation,Configuration Artifact (YAML/TOML Schema Extension)
-Timestamp Range & Unit,t_{\\min} \\le t_i \\le t_{\\max} (where t_i is in seconds),"yaml timestamp:\n  type: u64\n  unit: seconds # or 'ms', 'ns'\n  min_epoch: 1600000000\n  max_epoch: 4102444800" 22
-Timestamp Monotonicity,"\\forall i \\ge 2,\\ t_i \\ge t_{i-1}" (non-decreasing),yaml timestamp:\n  monotonic: non_decreasing 4
-Compositional Flags,"Set-theoretic rules: exclusivity, implications, cardinality.","toml \nflags = [""full_revocation"", ""permanent_consent""]\n\n\nif = ""mental_privacy""\nthen = ""cognitive_liberty""\n\n[rules.cardinality]\nmin = 1\nmax = 3" "44,53"
-Cross-File Foreign Key,Relational inclusion: K_B \\subseteq K_A.,yaml relations:\n  - name: particle_to_host\n    from_column: host_did\n    to_schema: hosts.csv\n    to_column: did 30
