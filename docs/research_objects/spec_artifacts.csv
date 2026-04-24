@@ -1,7 +1,10 @@
-Formal Specification,Concrete, Interoperable Artifact,Purpose
-RFC 4180 Compliance,docs/rfc4180_guide.md,csv-cli validate; human and machine reference for structural rules.
-Richer Semantic Contracts,"YAML/TOML schema extensions (e.g., min_epoch, mutually_exclusive)",Declarative definition of business rules for humans and the validator.
-Validator Output,Stable versioned error_report.json schema,Machine-readable labels for AI training and debugging.
-Schema Definition,"csv-cli describe-schema command emitting JSON",Programmatically accessible summaries for prompt templates and external tools.
-Atomic Write Invariant,"csv-core-io Rust module with atomic_write_csv function",Reusable code for preventing partial writes and ensuring durable replacements.
-Failure Corpora,"Library of (broken.csv, error_report.json, fixed.csv) triplets",Training data for AI self-correction, evaluation, and benchmarking.
+Formal Specification,Concrete Interoperable Artifact,Purpose
+RFC 4180 Compliance,docs/rfc4180_guide.md,"csv-cli validate; human and machine reference for structural rules."
+Richer Semantic Contracts,"configs/*.yaml; configs/*.toml (min_epoch, mutually_exclusive, requires, cardinality)","Declarative definition of business rules for humans, csv-core, and external tools."
+Validator Output,schemas/error_report.schema.json,"Stable, versioned JSON schema for machine-readable error reports used in AI training, debugging, and CI."
+Schema Definition,"csv-cli describe-schema --schema configs/governance-particle-schema.yaml","Programmatically accessible column and constraint summaries for prompt templates, editors, and external tools."
+Atomic Write Invariant,rust/csv-core-io/src/atomic_write_csv.rs,"Reusable Rust implementation of temp-file + fsync + rename + directory fsync to prevent partial writes and ensure durable replacements."
+Failure Corpora,examples/failure_corpora/,"Library of (broken.csv, error_report.json, fixed.csv) triplets for AI self-correction, evaluation, and regression testing."
+Toolchain Integration,.github/workflows/csv-lint.yml,"CI workflow invoking csv-cli validate on all CSVs and schemas to enforce structural and semantic correctness on every push."
+Ecosystem Adapters,python/src/csv_prevalidate.py,"Thin Python wrapper that runs csv-cli validate before Pandas/Polars ingest, compensating for more permissive CSV readers."
+DuckDB Pre-Validation,tools/duckdb_prevalidate.sql,"SQL/CLI script that shells out to csv-cli validate before DuckDB read_csv_auto, ensuring RFC 4180 and schema correctness prior to import."
