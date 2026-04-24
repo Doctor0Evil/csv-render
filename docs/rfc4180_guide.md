@@ -1,124 +1,158 @@
-# RFC 4180 Guide for csv-render
+# RFC 4180 Guide for `csv-render`
 
-This guide summarizes the parts of RFC 4180 that are most relevant for the `csv-render` project and explains how they interact with GitHub’s CSV rendering and the `csv-core` validator.
+This guide explains how the `csv-render` project interprets and enforces RFC 4180, the de facto standard for Comma-Separated Values (CSV) files. It is written for both humans and AI systems that need to generate and validate CSVs which render correctly on GitHub and pass the `csv-core` Rust validator.
 
-The goal is simple: any CSV that passes the rules in this guide should parse cleanly with standard tools, render correctly as a table on GitHub, and be acceptable to the Rust validation engine.
+The focus is on two layers of correctness:
 
----
+- **Structural validity**, as defined by RFC 4180 and required for GitHub’s CSV viewer.
+- **Semantic validity**, as defined by the project’s schema (`governance-particle-schema.yaml`) and related configuration files.
 
-## 1. What RFC 4180 Covers
+The examples in this guide assume the governance particle schema with the header:
 
-RFC 4180 describes a common format and MIME type for Comma-Separated Values (CSV) files. It does not standardize every possible variation of CSV in the wild, but it captures the most widely used conventions and clarifies how fields, quotes, and line breaks should behave.
-
-The key areas it addresses are:
-
-- How records (rows) are separated.
-- How fields (columns) are separated.
-- How to handle fields that contain commas, double quotes, or newlines.
-- How to represent header rows.
-
-This guide focuses on those aspects and on how `csv-render` enforces them.
+`host_did, consent_ledger_refs, timestamp, neurorights_flags, notes`
 
 ---
 
-## 2. Records and line endings
+## 1. Core RFC 4180 concepts
 
-A CSV file is a sequence of records. In RFC 4180:
+RFC 4180 defines a simple but strict model for CSV files:
 
-- Each record is placed on its own line.
-- Records are separated by line breaks.
-- Line breaks are typically represented as CRLF (`\r\n`), but many tools accept LF (`\n`) as well.
+- A CSV file consists of **records**, one per line.
+- Each record is made up of **fields**, separated by a **comma**.
+- The first record may be a **header row** that names the columns.
+- Fields may be optionally enclosed in **double quotes**.
+- Fields that contain commas, double quotes, or newlines **must** be enclosed in double quotes.
+- Double quotes inside a quoted field are represented by **two double quotes**.
 
-In `csv-render`:
-
-- We accept both `\n` and `\r\n` line endings, but files should be internally consistent.
-- Each non-empty line is expected to represent exactly one record.
-- There should be no stray line fragments caused by unclosed quotes.
-
-Consistency of line endings helps tools and Git diff views behave predictably, but most modern systems normalize line endings automatically.
+The `csv-render` project treats these rules as non-negotiable at the structural layer. Any CSV that violates them is considered structurally invalid and is rejected before schema-based checks run.
 
 ---
 
-## 3. Fields and delimiters
+## 2. Delimiters, quoting, and escaping
 
-Within each record, fields are separated by commas:
+In this project, a CSV is always:
 
-- The comma (`,`) is the only field delimiter.
-- There must be the same number of fields in every record, including the header row.
+- **Comma-delimited** (`,` as the delimiter).
+- Using **double quotes** (`"`) as the only quote character.
+- Using **no alternate delimiters** (no semicolons or tabs as field separators).
 
-This implies:
-
-- If the header row has 5 fields, every subsequent row must also have exactly 5 fields.
-- There should be no trailing comma at the end of any row; a trailing comma creates an extra empty field.
-
-In `csv-render`:
-
-- The Rust validator checks that the header and all data rows have identical field counts.
-- Any mismatch (extra or missing columns) is treated as a structural error.
-- We do not use semicolons or tabs as primary delimiters; semicolons may appear inside fields as data.
-
----
-
-## 4. Quoting rules for fields
-
-RFC 4180 defines when a field must be quoted and how quotes behave.
-
-### 4.1 When to quote a field
+### Fields that must be quoted
 
 A field must be enclosed in double quotes if it contains any of the following:
 
-- A comma.
-- A double quote.
-- A line break (CRLF or LF).
-
-If a field does not contain these characters, it may be left unquoted. For clarity and safety, it is acceptable to quote more fields than strictly necessary, but never less.
+- A comma (`,`)
+- A double quote (`"`)
+- A newline (line break)
 
 Examples:
 
-- `hello` is fine unquoted.
-- `"hello, world"` is required if the field contains a comma.
-- `"Line with\nnewline"` is required if the field contains a newline.
-- `"He said ""hello"""` is required if the field contains double quotes.
+- `PlainText` — no special characters, quoting optional.
+- `"Text with, comma"` — contains a comma, so it must be quoted.
+- `"Text with ""quote"""` — contains a double quote; it is quoted, and the internal quote is doubled.
+- `"First line\nSecond line"` — contains a newline, so it must be quoted.
 
-In `csv-render`, the validator assumes:
+### Escaping double quotes
 
-- Commas split fields unless they appear inside a properly quoted field.
-- Newlines always terminate records unless they are inside a properly quoted field.
-- Quotes are significant and must follow the escaping rules below.
-
-### 4.2 Escaping double quotes inside fields
-
-Double quotes inside a quoted field must be represented as two consecutive double quotes:
+Inside a quoted field, each literal double quote is written as two double quotes:
 
 - Logical content: `He said "hello".`
-- CSV field: `"He said ""hello""."`
+- CSV field: `"He said ""hello"". "` 
 
-This is the only valid way to escape double quotes inside CSV fields under RFC 4180.
-
-The validator treats any mismatched or unescaped double quotes as structural errors. This includes:
-
-- Opening a quoted field with `"` and never closing it.
-- Using a bare `"` inside a quoted field without doubling it.
+The parser treats `""` as a single literal `"` inside the field.
 
 ---
 
-## 5. Header row and column consistency
+## 3. Consistent column counts
 
-RFC 4180 recommends that CSV files start with a header row:
+RFC 4180 requires that each record have the same number of fields. In practice:
 
-- The first line of the file is a header that names each field.
-- Subsequent records then provide data for those fields.
+- The **header row** defines the number of columns.
+- Every data row must have **exactly the same number** of fields, in the same order.
+- There are **no trailing commas** after the last field in a row.
 
-`csv-render` treats the header row as authoritative:
+If the header has 5 fields, then every subsequent row must also have exactly 5 fields. For example, with the governance particle schema:
 
-- The number of fields in the header row defines the expected number of columns for all data rows.
-- The names in the header row must match the column names declared in the schema.
+`host_did, consent_ledger_refs, timestamp, neurorights_flags, notes`
 
-If the schema for a table expects:
+every row must have five fields corresponding to those names.
 
-- `host_did, consent_ledger_refs, timestamp, neurorights_flags, notes`
+Examples:
 
-then the header row must use exactly those names, in exactly that order, with the same spelling and casing. Any deviation (extra field, missing field, different name, or reordering) will be reported as a structural mismatch.
+Valid (5 fields):
+
+```csv
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,https://ledger.example/consent/abc123;https://ledger.example/consent/def456,1713825600,cognitive_liberty;mental_privacy,"Initial governance record."
+```
+
+Invalid (extra field):
+
+```csv
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,https://ledger.example/consent/abc123;https://ledger.example/consent/def456,1713825600,cognitive_liberty;mental_privacy,"Extra field","Oops"
+```
+
+Invalid (missing field):
+
+```csv
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,https://ledger.example/consent/abc123;https://ledger.example/consent/def456,1713825600,cognitive_liberty;mental_privacy
+```
+
+The `csv-core` validator rejects any row whose field count does not match the header.
+
+---
+
+## 4. Header row and schema alignment
+
+The header row is both a structural and semantic boundary:
+
+- Structurally, it defines the number and ordering of columns.
+- Semantically, it ties each position to a named field in the schema.
+
+If the schema for a table defines the columns:
+
+`host_did, consent_ledger_refs, timestamp, neurorights_flags, notes`
+
+then the header row must use **exactly those names**, in **exactly that order**, with the same spelling and casing. Any deviation (extra field, missing field, different name, or reordering) is reported as a **structural** mismatch by the validator.
+
+Examples of invalid headers for this schema:
+
+- `HostDID, consent_ledger_refs, timestamp, neurorights_flags, notes` (wrong casing)
+- `host_did, timestamp, consent_ledger_refs, neurorights_flags, notes` (reordered)
+- `host_did, consent_ledger_refs, timestamp, neurorights_flags` (missing `notes`)
+
+Correct header:
+
+```csv
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+```
+
+---
+
+## 5. Structural vs semantic validation
+
+`csv-render` separates validation into two layers:
+
+1. **Structural validation** (RFC 4180)
+   - Enforced by the CSV parser configuration and initial checks.
+   - Ensures the file is well-formed: correct quoting, escaping, delimiters, and consistent column counts.
+   - Fails on issues such as unclosed quotes, extra fields, or missing fields.
+
+2. **Semantic validation** (schema-driven)
+   - Enforced by `csv-core` using `governance-particle-schema.yaml` and additional config files.
+   - Ensures that each field’s value is meaningful and type-correct:
+     - `timestamp` parses as a `u64`.
+     - `consent_ledger_refs` is a list of URIs split by `;`.
+     - `neurorights_flags` contains only allowed flags from `neurorights-flags.toml`.
+   - Fails on issues such as non-numeric timestamps, unknown neurorights flags, or missing required values.
+
+A file like `rust/tests/broken.csv` is intentionally constructed to:
+
+- Pass all **structural** checks (so it is RFC 4180-compliant and GitHub-renderable).
+- Fail at the **semantic** layer (e.g., `not-a-timestamp`, `unknown_flag`).
+
+This dual-layer approach allows tests to confirm that both structural and semantic validation logic are functioning correctly.
 
 ---
 
@@ -134,11 +168,11 @@ Here the second field is empty. This can also be written as `""` to make the emp
 
 In `csv-render`:
 
-- The schema indicates whether a column is required or optional.
-- If a required field is empty (or effectively missing), it is a semantic error.
-- Optional fields may be empty; using `""` is often clearer and keeps the CSV visually aligned.
+- The schema indicates whether a column is **required** or **optional**.
+- If a **required** field is empty (or effectively missing), it is treated as a **semantic error**.
+- **Optional** fields may be empty; using `""` is often clearer and keeps the CSV visually aligned.
 
-The validator distinguishes between structural correctness (field exists) and semantic correctness (field satisfies type and constraint rules).
+The validator distinguishes between structural correctness (field is present in the row) and semantic correctness (field satisfies type and constraint rules).
 
 ---
 
@@ -148,13 +182,13 @@ RFC 4180 permits line breaks inside fields, provided the field is quoted:
 
 - `"First line\nSecond line"`
 
-In practice, this is fragile for GitHub rendering and some tools, because line breaks inside fields can be misinterpreted or make diffs harder to read.
+In practice, this can be fragile for GitHub rendering and some tools, because line breaks inside fields can be misinterpreted or make diffs difficult to read.
 
 In `csv-render`:
 
-- Newlines inside fields are allowed but discouraged.
-- If they are used, the field must be quoted.
-- Many examples and tests intentionally avoid embedded newlines to keep behavior simple and predictable.
+- Newlines inside fields are **allowed but discouraged**.
+- If they are used, the field **must be quoted**.
+- Most examples and tests intentionally avoid embedded newlines to keep behavior simple and predictable.
 
 When in doubt, prefer keeping each record on a single physical line.
 
@@ -164,15 +198,15 @@ When in doubt, prefer keeping each record on a single physical line.
 
 RFC 4180 does not mandate a specific character encoding, but:
 
-- UTF-8 has become the de facto standard for modern systems.
+- UTF-8 is the de facto standard for modern systems.
 - A Byte Order Mark (BOM) at the start of the file (`\uFEFF`) can confuse some parsers.
 
 `csv-render` assumes:
 
-- Files are encoded as UTF-8 without a BOM.
-- If a BOM or other unexpected leading bytes are detected, they may be treated as part of the first field, causing subtle errors.
+- Files are encoded as **UTF-8 without a BOM**.
+- If a BOM or other unexpected leading bytes are present, they may be treated as part of the first field, causing subtle errors.
 
-To avoid these issues, make sure your editors and tools save CSV files as plain UTF-8 without BOM.
+To avoid these issues, ensure that editors and tools save CSV files as plain UTF-8 without BOM.
 
 ---
 
@@ -189,21 +223,21 @@ Common reasons GitHub falls back to showing raw text include:
 - Inconsistent column counts across rows.
 - Extremely large files.
 
-Because `csv-render` enforces RFC 4180 rules, the same problems that break parsers are also flagged by the validator. The goal is that any CSV accepted by `csv-core` will also be safe to render on GitHub.
+Because `csv-render` enforces RFC 4180 rules, the same problems that break parsers are also flagged by the validator. The aim is that any CSV accepted by `csv-core` will also be safe to render as a table on GitHub.
 
 ---
 
-## 10. How csv-core enforces RFC 4180
+## 10. How `csv-core` enforces RFC 4180
 
-The Rust `csv-core` library in this repository uses a CSV parser configured to behave in line with RFC 4180:
+The Rust `csv-core` library uses a CSV parser configured to behave in line with RFC 4180:
 
-- Comma delimiter, double quote as the quote character.
-- Header row required and matched against the schema.
+- Comma delimiter and double quote as the quote character.
+- A required header row that is matched against the schema.
 - Flexible mode disabled so that each record must have a consistent number of fields.
 
 On top of that, `csv-core` adds:
 
-- Schema-based checks for types (for example, parsing `u64`).
+- Schema-based checks for types (for example, parsing `u64` for `timestamp`).
 - Constraints on allowed values, such as a fixed set of neurorights flags.
 - Clear error messages that identify the row, column, and reason for failure.
 
@@ -220,7 +254,7 @@ This means that:
 Before committing or accepting a CSV file in this project, verify:
 
 1. The file is saved as UTF-8 without BOM.
-2. The header row uses the exact column names and order defined in the schema.
+2. The header row uses the exact column names and order defined in the schema (for example, `host_did, consent_ledger_refs, timestamp, neurorights_flags, notes`).
 3. Every data row has the same number of fields as the header.
 4. Any field containing a comma, double quote, or newline is fully enclosed in double quotes.
 5. Any double quote inside a quoted field is escaped as `""`.
@@ -228,4 +262,4 @@ Before committing or accepting a CSV file in this project, verify:
 7. Required fields are not empty.
 8. Values conform to the expected types and allowed sets (for example, timestamps as integers, neurorights flags from the allowed list).
 
-If all these checks pass, the CSV file should be both RFC 4180-compliant and GitHub-ready, and it should pass the `csv-core` validator without errors.
+If all these checks pass, the CSV file should be RFC 4180-compliant, GitHub-ready, and able to pass the `csv-core` validator without errors.
