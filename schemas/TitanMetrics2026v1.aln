@@ -1,11 +1,21 @@
 // Filename: schemas/TitanMetrics2026v1.aln
 
 doctype TitanMetrics2026v1 {
-  field region_id         : String;
-  field plane             : Enum { WATER, SEWER, TITAN };
-  field latency_us        : RiskScalar<LatencyRaw>;
-  field jitter_us         : RiskScalar<JitterRaw>;
-  field loss_ppm          : RiskScalar<LossRaw>;
+  field region_id  : String;
+  field plane      : Enum { WATER, SEWER, TITAN };
+  field latency_us : RiskScalar<LatencyRaw>;
+  field jitter_us  : RiskScalar<JitterRaw>;
+  field loss_ppm   : RiskScalar<LossRaw>;
+
+  metadata {
+    kernel_module  : "titan-metrics-core";
+    proof_module   : "TitanRiskLyapunovRelation.tla";
+    kernel_version : "2026.1.3";
+    invariant_ids  : [
+      "TitanLyapunovNonExpansion2026v1",
+      "TitanCannotWeakenWater2026v1"
+    ];
+  }
 }
 
 risk_scalar LatencyRaw {
