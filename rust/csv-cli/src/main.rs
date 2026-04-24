@@ -1,12 +1,23 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 
 use csv_core::{validate_csv_with_schema, Schema, ValidationError, ValidationOptions};
 
-/// csv-cli
-///
-/// Command-line interface for the csv-core validation library.
+mod json_report;
+
+use json_report::build_error_report;
+
+fn emit_json_report(
+    csv_path: &str,
+    schema_id: Option<&str>,
+    total_rows: usize,
+    errors: Vec<(ValidationError, Option<String>)>,
+) -> std::io::Result<()> {
+    let report = build_error_report(csv_path, schema_id, total_rows, errors);
+    json_report::write_error_report_json(&report, std::io::stdout())
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "csv-cli")]
 #[command(about = "CSV validation and linting for the csv-render project")]
@@ -17,56 +28,127 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Validate a CSV file against a schema.
     Validate {
-        /// Path to the YAML schema file.
         #[arg(long)]
         schema: PathBuf,
 
-        /// Path to the CSV file to validate.
         csv_path: PathBuf,
 
-        /// Maximum number of data rows to validate (0 = all).
         #[arg(long, default_value_t = 0)]
         max_rows: usize,
+
+        #[arg(long, action = ArgAction::SetTrue)]
+        json: bool,
     },
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    let result = match cli.command {
+    let exit_code = match cli.command {
         Commands::Validate {
             schema,
             csv_path,
             max_rows,
-        } => {
-            let schema_loaded = Schema::from_yaml_file(schema);
-            match schema_loaded {
-                Ok(schema_value) => {
-                    let options = if max_rows > 0 {
-                        ValidationOptions {
-                            max_rows: Some(max_rows),
-                        }
-                    } else {
-                        ValidationOptions::default()
-                    };
+            json,
+        } => run_validate(schema, csv_path, max_rows, json),
+    };
 
-                    validate_csv_with_schema(csv_path, &schema_value, &options)
+    std::process::exit(exit_code);
+}
+
+fn run_validate(
+    schema_path: PathBuf,
+    csv_path: PathBuf,
+    max_rows: usize,
+    json: bool,
+) -> i32 {
+    let schema_loaded = Schema::from_yaml_file(&schema_path);
+
+    let schema = match schema_loaded {
+        Ok(schema_value) => schema_value,
+        Err(e) => {
+            let err = ValidationError::Schema {
+                code: "SCHEMA_LOAD_FAILED",
+                message: format!("failed to load schema: {}", e),
+                source: Some(e),
+            };
+
+            if json {
+                let report = build_error_report(
+                    &csv_path.to_string_lossy(),
+                    None,
+                    0,
+                    vec![(err, None)],
+                );
+                if let Err(io_err) =
+                    json_report::write_error_report_json(&report, std::io::stdout())
+                {
+                    eprintln!("failed to write JSON error report: {}", io_err);
                 }
-                Err(e) => Err(ValidationError::Schema(e)),
+            } else {
+                eprintln!("schema error: {}", err);
             }
+
+            return 1;
         }
     };
 
-    match result {
-        Ok(()) => {
-            println!(r#"{{"status":"ok"}}"#);
-            std::process::exit(0);
+    let options = if max_rows > 0 {
+        ValidationOptions {
+            max_rows: Some(max_rows),
         }
-        Err(err) => {
-            eprintln!(r#"{{"status":"error","message":"{err}"}}"#);
-            std::process::exit(1);
+    } else {
+        ValidationOptions::default()
+    };
+
+    let validation_result =
+        validate_csv_with_schema(&csv_path, &schema, &options);
+
+    match validation_result {
+        Ok(summary) => {
+            if json {
+                let report = build_error_report(
+                    &csv_path.to_string_lossy(),
+                    schema.schema_id.as_deref(),
+                    summary.total_rows,
+                    Vec::new(),
+                );
+                if let Err(io_err) =
+                    json_report::write_error_report_json(&report, std::io::stdout())
+                {
+                    eprintln!("failed to write JSON report: {}", io_err);
+                    return 1;
+                }
+            } else {
+                println!(r#"{{"status":"ok","total_rows":{}}}"#, summary.total_rows);
+            }
+            0
+        }
+        Err(errors) => {
+            if json {
+                let report = build_error_report(
+                    &csv_path.to_string_lossy(),
+                    schema.schema_id.as_deref(),
+                    errors.total_rows,
+                    errors
+                        .items
+                        .into_iter()
+                        .map(|e| (e, None))
+                        .collect(),
+                );
+                if let Err(io_err) =
+                    json_report::write_error_report_json(&report, std::io::stdout())
+                {
+                    eprintln!("failed to write JSON error report: {}", io_err);
+                    return 1;
+                }
+            } else {
+                for err in errors.items {
+                    eprintln!("error: {}", err);
+                }
+            }
+            1
         }
     }
 }
