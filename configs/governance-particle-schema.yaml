@@ -4,15 +4,30 @@ columns:
     type: String
     required: true
     description: "Decentralized identifier of the host whose sovereignty is being governed."
+
   - name: consent_ledger_refs
     type: Vec<String>
     required: true
-    separator: ";"  # internal list delimiter
-  # ... all other fields ...
+    separator: ";"
+    description: "Semicolon-separated list of URIs pointing to consent records."
+
+  - name: timestamp
+    type: u64
+    required: true
+    description: "Unix timestamp (seconds since epoch)."
+
   - name: neurorights_flags
     type: NeurorightsFlags
     required: true
     flags:
       - cognitive_liberty
       - mental_privacy
-      - ...  # defined in neurorights-flags.toml
+      - mental_integrity
+      - psychological_continuity
+      - agency_preservation
+    description: "Bitflag-style representation of neurorights guarantees, constrained to flags defined in neurorights-flags.toml."
+
+  - name: notes
+    type: String
+    required: false
+    description: "Optional free-form notes; may contain commas and must be quoted as needed."
