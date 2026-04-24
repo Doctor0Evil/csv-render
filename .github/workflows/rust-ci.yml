@@ -66,3 +66,7 @@ jobs:
             validate \
             --schema ../configs/governance-particle-schema.yaml \
             ../examples/valid_example.csv
+
+- name: Scan repository for canonical CSVs
+  working-directory: rust
+  run: cargo run -p csv-cli -- scan --index ../configs/repo-index.yaml
