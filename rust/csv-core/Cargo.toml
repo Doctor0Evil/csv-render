@@ -1,0 +1,11 @@
+[package]
+name = "csv-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+csv = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }
