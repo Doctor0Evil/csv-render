@@ -5,6 +5,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use csv_core::{validate_csv_with_schema, Schema, ValidationError, ValidationOptions};
 
 mod json_report;
+mod scan;
 
 use json_report::build_error_report;
 
@@ -20,7 +21,7 @@ fn emit_json_report(
 
 #[derive(Debug, Parser)]
 #[command(name = "csv-cli")]
-#[command(about = "CSV validation and linting for the csv-render project")]
+#[command(about = "CSV validation, linting, and repo scanning for the csv-render project")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -28,17 +29,33 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Validate a CSV file against a schema.
     Validate {
+        /// Path to the YAML schema file.
         #[arg(long)]
         schema: PathBuf,
 
+        /// Path to the CSV file to validate.
         csv_path: PathBuf,
 
+        /// Optional limit on the number of rows to validate (0 = no limit).
         #[arg(long, default_value_t = 0)]
         max_rows: usize,
 
+        /// Emit JSON report instead of plain text.
         #[arg(long, action = ArgAction::SetTrue)]
         json: bool,
+    },
+
+    /// Scan the repository for unregistered/duplicate CSVs using configs/repo-index.yaml.
+    Scan {
+        /// Root directory of the repository (defaults to current directory).
+        #[arg(long, default_value = ".")]
+        repo_root: PathBuf,
+
+        /// Path to the repo index configuration.
+        #[arg(long, default_value = "configs/repo-index.yaml")]
+        index: PathBuf,
     },
 }
 
@@ -52,9 +69,14 @@ fn main() {
             max_rows,
             json,
         } => run_validate(schema, csv_path, max_rows, json),
+        Commands::Scan { repo_root, index } => run_scan(repo_root, index),
     };
 
     std::process::exit(exit_code);
+}
+
+fn run_scan(repo_root: PathBuf, index_path: PathBuf) -> i32 {
+    scan::run_scan_command(&repo_root, &index_path)
 }
 
 fn run_validate(
@@ -75,15 +97,12 @@ fn run_validate(
             };
 
             if json {
-                let report = build_error_report(
+                if let Err(io_err) = emit_json_report(
                     &csv_path.to_string_lossy(),
                     None,
                     0,
                     vec![(err, None)],
-                );
-                if let Err(io_err) =
-                    json_report::write_error_report_json(&report, std::io::stdout())
-                {
+                ) {
                     eprintln!("failed to write JSON error report: {}", io_err);
                 }
             } else {
@@ -102,21 +121,17 @@ fn run_validate(
         ValidationOptions::default()
     };
 
-    let validation_result =
-        validate_csv_with_schema(&csv_path, &schema, &options);
+    let validation_result = validate_csv_with_schema(&csv_path, &schema, &options);
 
     match validation_result {
         Ok(summary) => {
             if json {
-                let report = build_error_report(
+                if let Err(io_err) = emit_json_report(
                     &csv_path.to_string_lossy(),
                     schema.schema_id.as_deref(),
                     summary.total_rows,
                     Vec::new(),
-                );
-                if let Err(io_err) =
-                    json_report::write_error_report_json(&report, std::io::stdout())
-                {
+                ) {
                     eprintln!("failed to write JSON report: {}", io_err);
                     return 1;
                 }
@@ -127,19 +142,14 @@ fn run_validate(
         }
         Err(errors) => {
             if json {
-                let report = build_error_report(
+                let items: Vec<(ValidationError, Option<String>)> =
+                    errors.items.into_iter().map(|e| (e, None)).collect();
+                if let Err(io_err) = emit_json_report(
                     &csv_path.to_string_lossy(),
                     schema.schema_id.as_deref(),
                     errors.total_rows,
-                    errors
-                        .items
-                        .into_iter()
-                        .map(|e| (e, None))
-                        .collect(),
-                );
-                if let Err(io_err) =
-                    json_report::write_error_report_json(&report, std::io::stdout())
-                {
+                    items,
+                ) {
                     eprintln!("failed to write JSON error report: {}", io_err);
                     return 1;
                 }
