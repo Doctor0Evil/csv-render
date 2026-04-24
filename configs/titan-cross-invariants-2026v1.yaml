@@ -1,0 +1,108 @@
+doctype: TITAN-CROSS-INVARIANTS-2026v1
+version: 1
+description: >
+  Cross-shard and cross-plane invariants for TITAN corridors,
+  enforcing Lyapunov non-expansion and cross-plane envelope containment.
+
+kernels:
+  titan_metrics_core: "titan-metrics-core@2026.1.0"
+  titan_lyapunov: "TitanRiskLyapunovRelation@2026.1.0"
+  titan_corridor: "TitanCorridorEnvelope@2026.1.0"
+
+proofs:
+  tla_lyapunov: "TitanRiskLyapunovRelation.tla"
+  tla_corridor: "TitanCorridorEnvelope.tla"
+
+contexts:
+  region_corridor:
+    description: >
+      Region-wide risk envelopes induced by a RegionLinkPlan shard.
+    shards:
+      plan:
+        doctype: RegionLinkPlan2026v1
+        key: basin_id
+      titan_delay:
+        doctype: TitanNetPlane.EFDelayBound2026v1
+        key: basin_id
+      titan_metrics:
+        doctype: TitanMetrics2026v1
+        key: basin_id
+      water_corridor:
+        doctype: WaterCorridorEnvelope2026v1
+        key: basin_id
+      sewer_corridor:
+        doctype: SewerCorridorEnvelope2026v1
+        key: basin_id
+
+invariants:
+  - name: titan_lyapunov_nonexpansion
+    kind: cross_shard_invariant
+    context: region_corridor
+    kernel:
+      module: titan_lyapunov
+      function: lyapunov_nonexpansion_region
+    proof:
+      module: tla_lyapunov
+      theorem: NonExpansionUnderRegionPlan
+    quantification:
+      over: basin_id
+      join:
+        - plan
+        - titan_delay
+        - titan_metrics
+    inputs:
+      state_coords:
+        from: titan_metrics
+        fields: [rlatency, rjitter, rloss, roh]
+      corridor_bounds:
+        from: titan_delay
+        fields: [max_delay_ms, max_jitter_ms, max_loss]
+    condition:
+      type: lyapunov_nonexpansion
+      norm: weighted_l2
+      parameters:
+        tau: 1
+      expression: |
+        For every basin_id and every allowed disturbance profile d,
+        V_next(state', d) - V(state, d) <= 0
+
+  - name: cross_plane_envelope_containment
+    kind: cross_plane_invariant
+    context: region_corridor
+    kernel:
+      module: titan_corridor
+      function: check_plane_envelope_containment
+    proof:
+      module: tla_corridor
+      theorem: TitanPlaneCannotEnlargeCorridor
+    quantification:
+      over: basin_id
+      join:
+        - titan_metrics
+        - water_corridor
+        - sewer_corridor
+    inputs:
+      titan_risk:
+        from: titan_metrics
+        fields: [rlatency, rjitter, rloss, roh]
+      water_envelope:
+        from: water_corridor
+        fields: [rlatency_max, rjitter_max, rloss_max, roh_max]
+      sewer_envelope:
+        from: sewer_corridor
+        fields: [rlatency_max, rjitter_max, rloss_max, roh_max]
+    condition:
+      type: envelope_containment
+      expression: |
+        For every basin_id and coordinate r in {rlatency,rjitter,rloss,roh}:
+          titan_risk[r] <= min(water_envelope[r], sewer_envelope[r])
+
+evidence:
+  binding:
+    evidence_coord: evidencehex
+    includes:
+      - kernels.titan_metrics_core
+      - kernels.titan_lyapunov
+      - kernels.titan_corridor
+      - proofs.tla_lyapunov
+      - proofs.tla_corridor
