@@ -6,6 +6,7 @@ use csv_core::{validate_csv_with_schema, Schema, ValidationError, ValidationOpti
 
 mod json_report;
 mod scan;
+mod validation_inventory;
 
 use json_report::build_error_report;
 
@@ -57,6 +58,17 @@ enum Commands {
         #[arg(long, default_value = "configs/repo-index.yaml")]
         index: PathBuf,
     },
+
+    /// Generate a validation inventory CSV for all indexed files.
+    ValidationInventory {
+        /// Root directory of the repository (defaults to current directory).
+        #[arg(long, default_value = ".")]
+        repo_root: PathBuf,
+
+        /// Path to the repo index configuration.
+        #[arg(long, default_value = "configs/repo-index.yaml")]
+        index: PathBuf,
+    },
 }
 
 fn main() {
@@ -69,7 +81,12 @@ fn main() {
             max_rows,
             json,
         } => run_validate(schema, csv_path, max_rows, json),
+
         Commands::Scan { repo_root, index } => run_scan(repo_root, index),
+
+        Commands::ValidationInventory { repo_root, index } => {
+            run_validation_inventory(repo_root, index)
+        }
     };
 
     std::process::exit(exit_code);
@@ -77,6 +94,10 @@ fn main() {
 
 fn run_scan(repo_root: PathBuf, index_path: PathBuf) -> i32 {
     scan::run_scan_command(&repo_root, &index_path)
+}
+
+fn run_validation_inventory(repo_root: PathBuf, index_path: PathBuf) -> i32 {
+    validation_inventory::run_validation_inventory(&repo_root, &index_path)
 }
 
 fn run_validate(
