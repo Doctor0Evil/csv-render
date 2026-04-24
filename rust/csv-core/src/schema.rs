@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -5,10 +6,6 @@ use serde::Deserialize;
 
 use crate::error::SchemaLoadError;
 
-/// Representation of a single column in the schema.
-///
-/// This is intentionally simple as a first pass and can be extended with
-/// richer type information and constraints.
 #[derive(Debug, Deserialize, Clone)]
 pub struct Column {
     pub name: String,
@@ -20,7 +17,6 @@ pub struct Column {
     pub separator: Option<String>,
 }
 
-/// Top-level schema structure loaded from YAML.
 #[derive(Debug, Deserialize, Clone)]
 pub struct Schema {
     pub table: String,
@@ -28,7 +24,6 @@ pub struct Schema {
 }
 
 impl Schema {
-    /// Load a schema from a YAML file on disk.
     pub fn from_yaml_file<P: AsRef<Path>>(path: P) -> Result<Self, SchemaLoadError> {
         let path_ref = path.as_ref();
         let yaml = fs::read_to_string(path_ref).map_err(|source| SchemaLoadError::Io {
@@ -41,5 +36,33 @@ impl Schema {
                 source,
             })?;
         Ok(schema)
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct NeurorightsConfig {
+    pub flags: HashMap<String, bool>,
+}
+
+impl NeurorightsConfig {
+    pub fn from_toml_file<P: AsRef<Path>>(path: P) -> Result<Self, SchemaLoadError> {
+        let path_ref = path.as_ref();
+        let toml_str = fs::read_to_string(path_ref).map_err(|source| SchemaLoadError::Io {
+            path: path_ref.to_path_buf(),
+            source,
+        })?;
+        let cfg: NeurorightsConfig =
+            toml::from_str(&toml_str).map_err(|source| SchemaLoadError::Toml {
+                path: path_ref.to_path_buf(),
+                source,
+            })?;
+        Ok(cfg)
+    }
+
+    pub fn allowed_flags(&self) -> HashSet<String> {
+        self.flags
+            .iter()
+            .filter_map(|(k, v)| if *v { Some(k.clone()) } else { None })
+            .collect()
     }
 }
