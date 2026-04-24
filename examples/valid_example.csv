@@ -1,0 +1,5 @@
+id,name,email,signup_timestamp,notes
+1,"Alice Example",alice@example.org,1713825600,"Early adopter, prefers email notifications."
+2,"Bob Example",bob@example.org,1713829200,"Requested beta access; interested in governance features."
+3,"Carol Example",carol@example.org,1713832800,"Uses multiple devices; ensure consent records are synced."
+4,"Dave Example",dave@example.org,1713836400,"No special notes."
