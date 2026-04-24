@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "file": "failure_corpus/T2_TIME_RANGE_VIOLATION/case_01/broken.csv",
+  "schema_id": "governance-particle-v1",
+  "summary": {
+    "total_rows": 2,
+    "errors": 1,
+    "categories": {
+      "lexical": 0,
+      "structural": 0,
+      "semantic": 1,
+      "relational": 0,
+      "io": 0
+    }
+  },
+  "errors": [
+    {
+      "row": 1,
+      "column": 2,
+      "column_name": "timestamp",
+      "category": "semantic",
+      "code": "T2_TIME_RANGE_VIOLATION",
+      "message": "timestamp 1590000000 is outside allowed range [1600000000..=4102444800]",
+      "details": {
+        "value": 1590000000,
+        "min_epoch": 1600000000,
+        "max_epoch": 4102444800
+      }
+    }
+  ]
+}
