@@ -1,0 +1,7 @@
+Formal Specification,Concrete, Interoperable Artifact,Purpose
+RFC 4180 Compliance,docs/rfc4180_guide.md,csv-cli validate; human and machine reference for structural rules.
+Richer Semantic Contracts,"YAML/TOML schema extensions (e.g., min_epoch, mutually_exclusive)",Declarative definition of business rules for humans and the validator.
+Validator Output,Stable versioned error_report.json schema,Machine-readable labels for AI training and debugging.
+Schema Definition,"csv-cli describe-schema command emitting JSON",Programmatically accessible summaries for prompt templates and external tools.
+Atomic Write Invariant,"csv-core-io Rust module with atomic_write_csv function",Reusable code for preventing partial writes and ensuring durable replacements.
+Failure Corpora,"Library of (broken.csv, error_report.json, fixed.csv) triplets",Training data for AI self-correction, evaluation, and benchmarking.
