@@ -1,0 +1,5 @@
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,"https://ledger.example/consent/abc123;https://ledger.example/consent/def456",1713825600,"cognitive_liberty;mental_privacy","Initial governance record, fully compliant."
+did:example:host2,"https://ledger.example/consent/xyz789",1713829200,"mental_integrity;psychological_continuity","Second record with multiple neurorights flags."
+did:example:host3,"https://ledger.example/consent/qwe111;https://ledger.example/consent/rty222",1713832800,"cognitive_liberty;agency_preservation","Record with two consent ledger references and neurorights flags."
+did:example:host4,"https://ledger.example/consent/zzz000",1713836400,mental_privacy,"Notes field with an embedded, comma that is properly quoted."
