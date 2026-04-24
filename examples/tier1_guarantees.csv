@@ -1,0 +1,6 @@
+tier_id,tier_name,guarantee_key,specification_predicate,concrete_artifact_implementation
+1,"Tier 1","Lexical Encoding","Input bytes must be valid UTF-8 and must not begin with the UTF-8 BOM (0xEF 0xBB 0xBF).","fn validate_encoding(bytes: &[u8]) -> Result<(), ValidationError> in a lexical module."
+1,"Tier 1","Newline Discipline","All \r\n sequences must be normalized to \n; bare \r bytes are forbidden.","A normalization homomorphism g applied before parsing. Rejects files with bare \r."
+1,"Tier 1","Strict Column Count","Every row must have an exact number of fields matching the header row.","ReaderBuilder::flexible(false) in Rust's csv crate."
+1,"Tier 1","Atomic File Write","New data must be written to a temp file, fsync'ed, then atomically renamed to the target.","A reusable atomic_write_csv(path, bytes) helper function in a csv-core-io module."
+1,"Tier 1","Optional Checksums","Per-row or per-file checksums (e.g., BLAKE3) can be verified to detect silent corruption.","An optional --check-integrity flag in csv-cli that computes and compares hashes."
