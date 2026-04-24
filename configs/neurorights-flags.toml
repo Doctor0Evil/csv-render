@@ -1,6 +1,31 @@
 [flags]
-cognitive_liberty = true
-mental_privacy = true
-mental_integrity = true
+cognitive_liberty        = true
+mental_privacy           = true
+mental_integrity         = true
 psychological_continuity = true
-agency_preservation = true
+agency_preservation      = true
+full_revocation          = true
+permanent_consent        = true
+
+[contracts.baseline]
+allowed = [
+  "cognitive_liberty",
+  "mental_privacy",
+  "mental_integrity",
+  "psychological_continuity",
+  "agency_preservation",
+  "full_revocation",
+  "permanent_consent",
+]
+
+[[contracts.baseline.exclusive]]
+a = "full_revocation"
+b = "permanent_consent"
+
+[[contracts.baseline.requires]]
+if   = "mental_privacy"
+then = "cognitive_liberty"
+
+[contracts.baseline.cardinality]
+min = 1
+max = 3
