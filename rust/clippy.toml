@@ -1,0 +1,21 @@
+# Treat Clippy warnings as hard errors to keep the codebase clean.
+deny_warnings = true
+
+# Enable additional pedantic checks, but you can relax specific ones as needed.
+warn = [
+    "clippy::pedantic",
+    "clippy::nursery",
+]
+
+# Lints that are allowed because they can be noisy in real-world code.
+allow = [
+    "clippy::module_name_repetitions",
+    "clippy::multiple_crate_versions",
+]
+
+# Workspace-level configuration for things like large enum variants, etc.
+# You can tune these thresholds as the project grows.
+cyclomatic_complexity_threshold = 25
+too_many_arguments_threshold = 7
+too_many_lines_threshold = 200
+type_complexity_threshold = 250
