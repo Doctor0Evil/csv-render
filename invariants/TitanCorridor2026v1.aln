@@ -1,0 +1,42 @@
+// Filename: invariants/TitanCorridor2026v1.aln
+
+cross_shard_invariant TitanLyapunovNonExpansion2026v1 {
+  inputs {
+    plan       : RegionLinkPlan2026v1;
+    ef_bounds  : TitanNetPlane.EFDelayBound2026v1;
+    metrics    : TitanMetrics2026v1;
+  }
+
+  // Qualitative description for humans
+  description "Lyapunov function V must be non-increasing per basin under Titan routing and EF delay bounds.";
+
+  // Referential link to the kernel that computes V and its delta
+  kernel_module  "titan-lyapunov-kernel";
+  proof_module   "TitanRiskLyapunovRelation.tla";
+  kernel_version "2026.1.3";
+
+  // Declarative form of the invariant
+  requires forall basin_id in metrics.basins() {
+    let v_t   = metrics.V(basin_id, t);
+    let v_tp1 = metrics.V(basin_id, t+1);
+    v_tp1 - v_t <= 0.0
+  };
+}
+
+cross_plane_invariant TitanCannotWeakenWater2026v1 {
+  inputs {
+    water_corridors : WaterCorridorProfile2026v1;
+    titan_corridors : TitanIntCorridorProfile2026v1;
+  }
+
+  description "TITAN risk envelopes may not exceed WATER envelopes for any shared risk coordinate.";
+
+  requires forall coord in water_corridors.risk_coordinates() {
+    let w_min = water_corridors.min(coord);
+    let w_max = water_corridors.max(coord);
+    let t_min = titan_corridors.min(coord);
+    let t_max = titan_corridors.max(coord);
+
+    t_min >= w_min && t_max <= w_max
+  };
+}
