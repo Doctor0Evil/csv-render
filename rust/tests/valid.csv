@@ -1,0 +1,3 @@
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,https://ledger.example/consent/abc123;https://ledger.example/consent/def456,1713825600,cognitive_liberty;mental_privacy,"Initial governance record, fully compliant."
+did:example:host2,https://ledger.example/consent/xyz789,1713829200,mental_integrity,"Second record with a note."
