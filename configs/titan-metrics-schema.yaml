@@ -1,0 +1,35 @@
+# configs/titan-metrics-schema.yaml
+columns:
+  - name: risk_score_raw
+    type: RiskF64
+    required: true
+    risk:
+      profile: linear_clamp
+      domain:
+        kind: bounded
+        min_raw: 0.0
+        max_raw: 100.0
+      normalization:
+        kind: linear
+        min_raw: 0.0
+        max_raw: 100.0
+      modifiers:
+        - Normalized01      # validator will *check* and allow identity
+        - MonotoneNonDecreasing
+
+  - name: breach_prob
+    type: RiskF64
+    required: true
+    risk:
+      profile: logit_clamp_p01
+      domain:
+        kind: open_interval
+        min_raw: 0.0
+        max_raw: 1.0
+      normalization:
+        kind: logit_clamp
+        lower_logit: -4.0
+        upper_logit: 4.0
+      modifiers:
+        - Normalized01
+        - Capped: 0.999
