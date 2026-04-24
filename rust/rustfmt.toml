@@ -1,0 +1,23 @@
+edition = "2021"
+
+max_width = 100
+use_small_heuristics = "Max"
+newline_style = "Auto"
+tab_spaces = 4
+
+# Keep imports tidy and deterministic across the workspace.
+reorder_imports = true
+reorder_modules = true
+group_imports = "StdExternalCrate"
+
+# Prefer block indent style (more common in modern Rust codebases).
+hard_tabs = false
+indent_style = "Block"
+
+# Keep where-clauses readable on complex types.
+where_single_line = false
+
+# Control how match arms and closures are formatted.
+match_block_trailing_comma = true
+wrap_comments = true
+comment_width = 100
