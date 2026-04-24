@@ -1,0 +1,59 @@
+# Rust build artifacts
+/target/
+/rust/target/
+
+# Rust coverage and profiling
+**/*.profraw
+**/*.profdata
+coverage/
+cargo-debug/
+
+# Rust backups and lockfiles (keep Cargo.lock if you want reproducible builds)
+**/*.rs.bk
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Python packaging / build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Jupyter / notebooks (if used later)
+.ipynb_checkpoints/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
+
+# Editor / IDE configs (keep repo-level ones if intentionally tracked)
+.vscode/
+.idea/
+*.iml
+
+# CSV-render specific outputs
+# Generated Markdown tables from CSV (if you want to keep only source CSVs)
+/output_markdown/
+*.generated.md
+
+# GitHub Actions local artifacts
+.github/workflows/*.tmp
