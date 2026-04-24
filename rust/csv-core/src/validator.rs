@@ -103,14 +103,12 @@ impl CsvValidator {
         let mut buf_reader = std::io::BufReader::new(reader);
         let mut first_line = String::new();
 
-        let bytes_read = buf_reader
-            .read_line(&mut first_line)
-            .map_err(|e| CsvError {
-                row_index: 0,
-                column_index: None,
-                category: CsvErrorCategory::Encoding,
-                message: format!("failed to read header line: {e}"),
-            })?;
+        let bytes_read = buf_reader.read_line(&mut first_line).map_err(|e| CsvError {
+            row_index: 0,
+            column_index: None,
+            category: CsvErrorCategory::Encoding,
+            message: format!("failed to read header line: {e}"),
+        })?;
 
         if bytes_read == 0 {
             return Err(CsvError {
@@ -153,14 +151,12 @@ impl CsvValidator {
 
         loop {
             line.clear();
-            let n = buf_reader
-                .read_line(&mut line)
-                .map_err(|e| CsvError {
-                    row_index,
-                    column_index: None,
-                    category: CsvErrorCategory::Encoding,
-                    message: format!("failed to read line: {e}"),
-                })?;
+            let n = buf_reader.read_line(&mut line).map_err(|e| CsvError {
+                row_index,
+                column_index: None,
+                category: CsvErrorCategory::Encoding,
+                message: format!("failed to read line: {e}"),
+            })?;
             if n == 0 {
                 break;
             }
@@ -261,10 +257,7 @@ impl CsvValidator {
                             row_index,
                             column_index: Some(col_index),
                             category: CsvErrorCategory::Quoting,
-                            message: format!(
-                                "unexpected character '{}' after closing quote",
-                                ch
-                            ),
+                            message: format!("unexpected character '{}' after closing quote", ch),
                         });
                     }
                 }
