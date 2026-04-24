@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use csv::ReaderBuilder;
 
 use crate::error::ValidationError;
-use crate::schema::{NeurorightsConfig, Schema};
+use crate::schema::{ColumnType, NeurorightsConfig, Schema};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CsvErrorCategory {
@@ -22,6 +22,22 @@ pub struct CsvError {
     pub column_index: Option<usize>,
     pub category: CsvErrorCategory,
     pub message: String,
+}
+
+impl CsvError {
+    pub fn new(
+        row_index: usize,
+        column_index: Option<usize>,
+        category: CsvErrorCategory,
+        message: String,
+    ) -> Self {
+        Self {
+            row_index,
+            column_index,
+            category,
+            message,
+        }
+    }
 }
 
 impl fmt::Display for CsvError {
@@ -93,7 +109,7 @@ impl CsvValidator {
                 row_index: 0,
                 column_index: None,
                 category: CsvErrorCategory::Encoding,
-                message: format!("failed to read header line: {}", e),
+                message: format!("failed to read header line: {e}"),
             })?;
 
         if bytes_read == 0 {
@@ -143,7 +159,7 @@ impl CsvValidator {
                     row_index,
                     column_index: None,
                     category: CsvErrorCategory::Encoding,
-                    message: format!("failed to read line: {}", e),
+                    message: format!("failed to read line: {e}"),
                 })?;
             if n == 0 {
                 break;
@@ -291,6 +307,81 @@ impl Default for ValidationOptions {
     }
 }
 
+pub fn validate_row(
+    schema: &Schema,
+    row_index: usize,
+    fields: &[String],
+) -> Result<(), CsvError> {
+    let expected = schema.arity();
+    let actual = fields.len();
+
+    if actual != expected {
+        return Err(CsvError::new(
+            row_index,
+            None,
+            CsvErrorCategory::ColumnCount,
+            format!("expected {expected} columns per schema, found {actual}"),
+        ));
+    }
+
+    for (i, (col, value)) in schema.columns.iter().zip(fields.iter()).enumerate() {
+        if col.required && value.trim().is_empty() {
+            return Err(CsvError::new(
+                row_index,
+                Some(i),
+                CsvErrorCategory::Structure,
+                format!("required column `{}` is empty", col.name),
+            ));
+        }
+
+        match &col.col_type {
+            ColumnType::String => {}
+            ColumnType::U64 => {
+                if value.parse::<u64>().is_err() {
+                    return Err(CsvError::new(
+                        row_index,
+                        Some(i),
+                        CsvErrorCategory::Structure,
+                        format!(
+                            "column `{}` expects unsigned integer (u64), found `{}`",
+                            col.name, value
+                        ),
+                    ));
+                }
+            }
+            ColumnType::StringList { separator } => {
+                let items = value.split(*separator);
+                if items.clone().any(|s| s.trim().is_empty()) {
+                    return Err(CsvError::new(
+                        row_index,
+                        Some(i),
+                        CsvErrorCategory::Structure,
+                        format!(
+                            "column `{}` expects non-empty list items separated by `{}`",
+                            col.name, separator
+                        ),
+                    ));
+                }
+            }
+            ColumnType::Enum { allowed } => {
+                if !allowed.contains(value) {
+                    return Err(CsvError::new(
+                        row_index,
+                        Some(i),
+                        CsvErrorCategory::Structure,
+                        format!(
+                            "column `{}` expects one of {:?}, found `{}`",
+                            col.name, allowed, value
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn validate_csv_with_schema<P: AsRef<Path>>(
     csv_path: P,
     schema: &Schema,
@@ -368,9 +459,11 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
             });
         }
 
+        let mut fields: Vec<String> = Vec::with_capacity(schema.columns.len());
+
         for (idx, col) in schema.columns.iter().enumerate() {
-            let value = record.get(idx).unwrap_or_default();
-            let value_trimmed = value.trim();
+            let value = record.get(idx).unwrap_or_default().to_string();
+            let value_trimmed = value.trim().to_string();
 
             if value_trimmed.is_empty() {
                 if col.required {
@@ -383,6 +476,7 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
                         ),
                     });
                 }
+                fields.push(value_trimmed);
                 continue;
             }
 
@@ -436,7 +530,15 @@ pub fn validate_csv_with_schema<P: AsRef<Path>>(
                     });
                 }
             }
+
+            fields.push(value_trimmed);
         }
+
+        validate_row(schema, row_number, &fields).map_err(|e| ValidationError::Structural {
+            row: row_number,
+            column: e.column_index.unwrap_or(0),
+            message: e.message,
+        })?;
     }
 
     Ok(())
