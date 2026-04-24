@@ -1,0 +1,36 @@
+// Filename: schemas/TitanMetrics2026v1.aln
+
+doctype TitanMetrics2026v1 {
+  field region_id         : String;
+  field plane             : Enum { WATER, SEWER, TITAN };
+  field latency_us        : RiskScalar<LatencyRaw>;
+  field jitter_us         : RiskScalar<JitterRaw>;
+  field loss_ppm          : RiskScalar<LossRaw>;
+}
+
+risk_scalar LatencyRaw {
+  normalization_id : "norm-linear-01-clamp";
+  risk_coordinate  : "r_latency";
+  unit             : "microseconds";
+  corridor_min     : 120.0;
+  corridor_max     : 420.0;
+  modifiers        : [Normalized01, Capped(0.22), MonotoneIncreasing];
+}
+
+risk_scalar JitterRaw {
+  normalization_id : "norm-linear-01-clamp";
+  risk_coordinate  : "r_jitter";
+  unit             : "microseconds";
+  corridor_min     : 0.0;
+  corridor_max     : 80.0;
+  modifiers        : [Normalized01, Capped(0.15), MonotoneIncreasing];
+}
+
+risk_scalar LossRaw {
+  normalization_id : "norm-logit-01-clamp";
+  risk_coordinate  : "r_loss";
+  unit             : "ppm";
+  corridor_min     : 0.0;
+  corridor_max     : 500.0;
+  modifiers        : [Normalized01, Capped(0.22), MonotoneIncreasing];
+}
