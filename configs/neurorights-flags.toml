@@ -1,4 +1,6 @@
 [flags]
 cognitive_liberty = true
 mental_privacy = true
-# ... etc.
+mental_integrity = true
+psychological_continuity = true
+agency_preservation = true
