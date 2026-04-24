@@ -5,7 +5,15 @@ edition = "2021"
 
 [dependencies]
 csv-core = { path = "../csv-core" }
+
+# Shared dependencies coming from the workspace (versions managed at root)
 clap = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
 toml = { workspace = true }
+
+# Local crate dependencies for scanning and validation inventory
+sha2 = "0.10"
+hex = "0.4"
+globwalk = "0.9"
+pathdiff = "0.2"
