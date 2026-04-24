@@ -1,0 +1,37 @@
+# configs/repo-index.yaml
+
+version: 1
+root: "."  # optional: relative root of the repo for path resolution
+
+csv_files:
+  - id: governance-particles
+    path: examples/governanceparticle.csv
+    schema: configs/governance-particle-schema.yaml
+    status: current            # {current, legacy, experimental}
+    description: "Primary governance particle dataset used in training and docs."
+    tags: ["training", "governance"]
+
+  - id: example-valid
+    path: examples/validexample.csv
+    schema: configs/example-schema.yaml
+    status: example
+    description: "Canonical valid example for AI and human reference."
+    tags: ["example", "test"]
+
+  - id: example-broken
+    path: examples/brokenexample.csv
+    schema: configs/example-schema.yaml
+    status: example
+    description: "Deliberately broken CSV used for tests."
+    tags: ["example", "test", "negative"]
+
+rules:
+  fail_on_unregistered_csv: true
+  fail_on_duplicate_paths: true
+  fail_on_duplicate_ids: true
+  include_globs:
+    - "**/*.csv"
+  exclude_globs:
+    - "target/**"
+    - "node_modules/**"
+    - ".git/**"
