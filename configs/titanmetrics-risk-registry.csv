@@ -1,0 +1,4 @@
+field_id,table,column,raw_type,profile_id,normalized_min,normalized_max
+tm_latency_score,titan_metrics,latency_ms,RiskF64,linear_clamp_0_100,0.0,1.0
+tm_breach_prob,titan_metrics,breach_prob,RiskF64,logit_clamp_p01_4,0.0,1.0
+tm_alert_rate,titan_metrics,alerts_per_hour,RiskU64,log_clamp_1_1000,0.0,1.0
