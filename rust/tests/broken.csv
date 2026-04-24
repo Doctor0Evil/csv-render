@@ -1,0 +1,5 @@
+host_did,consent_ledger_refs,timestamp,neurorights_flags,notes
+did:example:host1,https://ledger.example/consent/abc123;https://ledger.example/consent/def456,not-a-timestamp,cognitive_liberty;mental_privacy,"This row has an invalid timestamp."
+did:example:host2,https://ledger.example/consent/xyz789,1713829200,unknown_flag,"This row uses an invalid neurorights flag."
+did:example:host3,https://ledger.example/consent/qwe111;https://ledger.example/consent/rty222,1713829300,mental_privacy
+did:example:host4,https://ledger.example/consent/zzz000,1713829400,mental_privacy,"Unquoted, note with stray comma
